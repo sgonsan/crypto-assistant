@@ -122,36 +122,32 @@ Para añadir una acción: agregar su ticker de Yahoo Finance a `STOCKS` (ej. `"M
 
 **Arranque (una sola vez):**
 
-```text
-init_db()  →  run_backfill() [crypto + stocks]  →  predictor.train()  →  uvicorn (hilo)  →  engine.run()
+```mermaid
+flowchart LR
+    A[init_db] --> B["run_backfill()\ncrypto + stocks"]
+    B --> C["predictor.train()"]
+    C --> D["uvicorn\n(hilo daemon)"]
+    D --> E["engine.run()"]
 ```
 
 **Ciclo del engine (cada 60 s):**
 
-```text
-CoinGecko /api/v3/coins/{id}          Yahoo Finance v8 /chart/{symbol}
-         │                                          │
-         ▼                                          ▼
-fetcher.fetch_prices()           fetcher.fetch_stock_prices()
-         │                                          │
-         └──────────────┬─────────────────────────-┘
-                        ▼
-              db.insert_price()              → tabla prices
-                        │
-                        ▼
-         indicators.compute_indicators()    → RSI(14), MACD(12,26,9), BB(20), EMA(20)
-                        │
-                        ▼
-              db.insert_indicators()        → tabla indicators
-                        │
-                        ▼
-              predictor.predict()           → ("UP"|"DOWN", confianza 0–1)
-                        │
-                        ▼
-              db.insert_prediction()        → tabla predictions
-                        │
-                        ▼
-              LOG_FEED.append()             → lista en memoria → WebSocket → frontend
+```mermaid
+flowchart TD
+    CG["CoinGecko\n/api/v3/coins/{id}"]
+    YF["Yahoo Finance v8\n/chart/{symbol}"]
+
+    CG --> FP["fetcher.fetch_prices()"]
+    YF --> FS["fetcher.fetch_stock_prices()"]
+
+    FP --> IP["db.insert_price()\n→ tabla prices"]
+    FS --> IP
+
+    IP --> CI["indicators.compute_indicators()\nRSI(14) · MACD(12,26,9) · BB(20) · EMA(20)"]
+    CI --> II["db.insert_indicators()\n→ tabla indicators"]
+    II --> PR["predictor.predict()\n→ UP | DOWN, confianza 0–1"]
+    PR --> IP2["db.insert_prediction()\n→ tabla predictions"]
+    IP2 --> LF["LOG_FEED.append()\n→ lista en memoria → WebSocket → frontend"]
 ```
 
 Cada 50 iteraciones acumuladas se reentrena el modelo con los últimos 200 candles por activo.
