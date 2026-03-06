@@ -6,7 +6,7 @@ import threading
 import uvicorn
 
 from crypto_assistant import db, predictor
-from crypto_assistant.config import DB_PATH, COINS
+from crypto_assistant.config import DB_PATH, COINS, STOCKS
 from crypto_assistant.engine import run
 from crypto_assistant.backfill import run_backfill
 from crypto_assistant.api.app import app as api_app
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     logging.info("Loading or training initial model...")
     training_data = []
-    for coin_id in COINS:
+    for coin_id in COINS + STOCKS:
         rows = db.get_training_data(DB_PATH, coin_id, n=200)
         for i in range(len(rows) - 1):
             row = dict(rows[i])
