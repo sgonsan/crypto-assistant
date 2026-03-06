@@ -1,0 +1,18 @@
+[Unit]
+Description=Crypto Assistant — price monitor and ML predictor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/crypto-assistant
+ExecStart=/root/crypto-assistant/.venv/bin/python main.py
+Restart=on-failure
+RestartSec=15
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=crypto-assistant
+
+[Install]
+WantedBy=multi-user.target
