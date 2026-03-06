@@ -2,7 +2,7 @@ import time
 import logging
 from datetime import datetime
 from crypto_assistant import db, fetcher, indicators, predictor
-from crypto_assistant.config import DB_PATH, INTERVAL, COINS
+from crypto_assistant.config import DB_PATH, INTERVAL, COINS, STOCKS
 
 logger = logging.getLogger(__name__)
 
@@ -15,9 +15,9 @@ def run():
     while True:
         start_time = time.time()
         try:
-            prices = fetcher.fetch_prices()
+            all_prices = fetcher.fetch_prices() + fetcher.fetch_stock_prices()
 
-            for price in prices:
+            for price in all_prices:
                 coin_id = price['coin_id']
                 timestamp = price['timestamp']
                 open_ = price['open']
@@ -76,7 +76,7 @@ def run():
 
             if iteration % 60 == 0:
                 training_data = []
-                for coin_id in COINS:
+                for coin_id in COINS + STOCKS:
                     rows = db.get_training_data(DB_PATH, coin_id, n=200)
                     for i in range(len(rows) - 1):
                         row = dict(rows[i])

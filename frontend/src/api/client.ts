@@ -1,10 +1,20 @@
-import type { KPI, Prediction, Price, Indicator } from '../types'
+import type { KPI, Prediction, Price, Indicator, Assets } from '../types'
 
 const BASE = '/api'
 
 export async function fetchCoins(): Promise<string[]> {
   const res = await fetch(`${BASE}/coins`)
   return res.json()
+}
+
+export async function fetchAssets(): Promise<Assets> {
+  try {
+    const res = await fetch(`${BASE}/assets`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return res.json()
+  } catch {
+    return { crypto: [], stocks: [] }
+  }
 }
 
 export async function fetchKPI(): Promise<KPI[]> {

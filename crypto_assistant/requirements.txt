@@ -5,3 +5,4 @@ scikit-learn
 joblib
 fastapi
 uvicorn[standard]
+# yfinance  # disabled: requires fc.yahoo.com which may be blocked; using Stooq instead

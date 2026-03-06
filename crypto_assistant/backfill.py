@@ -1,10 +1,11 @@
 """
 Historical data backfill.
 
-On first startup (no data older than 1 year), fetches historical OHLCV from
-CoinGecko at three granularities and stores them in the DB together with their
-technical indicators:
+On first startup, fetches historical OHLCV and stores it with technical
+indicators. Subsequent startups skip assets that already have data older
+than 30 days.
 
+── Crypto (CoinGecko) ────────────────────────────────────────────────────────
   Period                Granularity     CoinGecko fetch
   ──────────────────────────────────────────────────────
   1 year – 1 month ago  daily           days=365, all daily points
@@ -12,7 +13,12 @@ technical indicators:
   last week             hourly          days=7,   all hourly points
 
 Note: the CoinGecko free API only supports up to 365 days on market_chart.
-Subsequent startups skip the backfill when data older than 30 days is found.
+
+── Stocks (Yahoo Finance v8) ──────────────────────────────────────────────────
+  Period                Granularity     Yahoo Finance v8 fetch
+  ──────────────────────────────────────────────────────────────
+  older than 2 years    daily           interval=1d, range=5y
+  last 2 years          hourly          interval=1h, range=730d
 """
 
 import time
@@ -20,9 +26,10 @@ import logging
 
 import requests
 
-from crypto_assistant.config import COINS, DB_PATH
+from crypto_assistant.config import COINS, STOCKS, DB_PATH
 from crypto_assistant import db
 from crypto_assistant.fetcher.historical import fetch_market_chart
+from crypto_assistant.fetcher.historical_stocks import fetch_stock_history
 from crypto_assistant.indicators.technical import compute_indicators_series
 
 logger = logging.getLogger(__name__)
@@ -116,10 +123,69 @@ def _store_candles(db_path: str, candles: list[dict]) -> None:
     )
 
 
+def _build_stock_candle_set(symbol: str) -> list[dict]:
+    """
+    Fetch 2 years of hourly + 5 years of daily historical data for one stock.
+    Hourly data covers the recent period; daily fills in older history.
+    Returns a sorted, deduplicated list of candle dicts.
+    """
+    all_candles: dict[int, dict] = {}
+    now = int(time.time())
+    two_years_ago = now - 730 * 86400
+
+    # ── Tier 1: 5y daily → keep data older than 730 days ─────────────────────
+    logger.info("  [%s] Fetching 5-year daily data (Yahoo Finance)…", symbol)
+    daily = fetch_stock_history(symbol, interval="1d", range_="5y")
+    if daily:
+        added = 0
+        for c in daily:
+            if c["timestamp"] < two_years_ago:
+                all_candles[c["timestamp"]] = c
+                added += 1
+        logger.info("  [%s] 5y daily: %d points kept (older than 2y)", symbol, added)
+    time.sleep(2.0)
+
+    # ── Tier 2: 730d hourly → all recent data ────────────────────────────────
+    logger.info("  [%s] Fetching 730-day hourly data (Yahoo Finance)…", symbol)
+    hourly = fetch_stock_history(symbol, interval="1h", range_="730d")
+    if hourly:
+        for c in hourly:
+            all_candles[c["timestamp"]] = c
+        logger.info("  [%s] 730d hourly: %d points", symbol, len(hourly))
+
+    return sorted(all_candles.values(), key=lambda c: c["timestamp"])
+
+
+def run_stock_backfill(db_path: str = DB_PATH) -> None:
+    """
+    Run the historical backfill for all configured stocks via Yahoo Finance v8.
+    Skips any stock that already has data older than 30 days.
+    """
+    logger.info("=== Stock historical backfill starting ===")
+
+    for idx, symbol in enumerate(STOCKS):
+        if db.has_historical_data(db_path, symbol):
+            logger.info("Historical data already present for '%s' – skipping.", symbol)
+            if idx < len(STOCKS) - 1:
+                time.sleep(5.0)
+            continue
+
+        logger.info("Backfilling stock '%s'…", symbol)
+        candles = _build_stock_candle_set(symbol)
+        logger.info("  [%s] Total candles to store: %d", symbol, len(candles))
+        _store_candles(db_path, candles)
+        logger.info("Backfill complete for '%s'.", symbol)
+
+        if idx < len(STOCKS) - 1:
+            time.sleep(5.0)
+
+    logger.info("=== Stock historical backfill done ===")
+
+
 def run_backfill(db_path: str = DB_PATH) -> None:
     """
-    Run the historical backfill for all configured coins.
-    Skips any coin that already has data older than 1 year.
+    Run the historical backfill for all configured coins and stocks.
+    Skips any asset that already has data older than 30 days.
     """
     logger.info("=== Historical backfill starting ===")
 
@@ -145,3 +211,5 @@ def run_backfill(db_path: str = DB_PATH) -> None:
                 time.sleep(_BETWEEN_COINS_SLEEP)
 
     logger.info("=== Historical backfill done ===")
+
+    run_stock_backfill(db_path)

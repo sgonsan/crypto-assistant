@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchCoins, fetchKPI, fetchPrices, fetchIndicators, fetchPredictions } from './api/client'
+import { fetchAssets, fetchKPI, fetchPrices, fetchIndicators, fetchPredictions } from './api/client'
 import { KPICards }          from './components/KPICards'
 import { PriceChart }        from './components/PriceChart'
 import { CandlestickChart }  from './components/CandlestickChart'
 import { PredictionHistory } from './components/PredictionHistory'
 import { LogFeed }           from './components/LogFeed'
-import type { KPI, Price, Indicator, Prediction } from './types'
+import type { KPI, Price, Indicator, Prediction, Assets } from './types'
 
 const TABS = ['Live Price', 'Candlestick', 'Predictions'] as const
 type Tab = (typeof TABS)[number]
@@ -18,8 +18,12 @@ const RANGES: { label: string; seconds: number }[] = [
   { label: '30d', seconds: 2_592_000 },
 ]
 
+const formatAssetName = (id: string, stocks: string[]) =>
+  stocks.includes(id) ? id : id.charAt(0).toUpperCase() + id.slice(1)
+
 export default function App() {
-  const [coins,        setCoins]        = useState<string[]>([])
+  const [assets,       setAssets]       = useState<Assets>({ crypto: [], stocks: [] })
+  const [assetType,    setAssetType]    = useState<'crypto' | 'stocks'>('crypto')
   const [selectedCoin, setSelectedCoin] = useState<string>('')
   const [kpi,          setKpi]          = useState<KPI[]>([])
   const [prices,       setPrices]       = useState<Price[]>([])
@@ -29,13 +33,19 @@ export default function App() {
   const [rangeSeconds, setRangeSeconds] = useState(604_800)
   const [lastUpdate,   setLastUpdate]   = useState('')
 
-  // Load coin list once
+  // Load asset list once
   useEffect(() => {
-    fetchCoins().then((c) => {
-      setCoins(c)
-      if (c.length > 0) setSelectedCoin(c[0])
+    fetchAssets().then((a) => {
+      setAssets(a)
+      if (a.crypto.length > 0) setSelectedCoin(a.crypto[0])
     })
   }, [])
+
+  // When assetType changes, switch selectedCoin to first asset of that type
+  useEffect(() => {
+    const list = assetType === 'crypto' ? assets.crypto : assets.stocks
+    if (list.length > 0) setSelectedCoin(list[0])
+  }, [assetType]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const refresh = useCallback(async () => {
     if (!selectedCoin) return
@@ -59,21 +69,45 @@ export default function App() {
     return () => clearInterval(id)
   }, [refresh])
 
+  const currentList = assetType === 'crypto' ? assets.crypto : assets.stocks
+  const filteredKpi = kpi.filter((k) =>
+    assetType === 'crypto'
+      ? assets.crypto.includes(k.coin_id)
+      : assets.stocks.includes(k.coin_id)
+  )
+
   return (
     <div className="min-h-screen bg-bg text-text">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <header className="bg-card border-b border-border px-6 py-3 flex items-center gap-4 sticky top-0 z-10">
-        <span className="text-xl font-bold text-accent">Crypto Assistant</span>
+        <span className="text-xl font-bold text-accent">Market Assistant</span>
+
+        {/* Asset type toggle */}
+        <div className="flex gap-1">
+          {(['crypto', 'stocks'] as const).map((type) => (
+            <button
+              key={type}
+              onClick={() => setAssetType(type)}
+              className={`px-2.5 py-1 text-xs rounded transition-colors capitalize ${
+                assetType === type
+                  ? 'bg-accent text-white'
+                  : 'text-muted hover:text-text border border-border'
+              }`}
+            >
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </button>
+          ))}
+        </div>
 
         <select
           value={selectedCoin}
           onChange={(e) => setSelectedCoin(e.target.value)}
           className="bg-bg border border-border text-text rounded px-3 py-1.5 text-sm focus:outline-none focus:border-accent"
         >
-          {coins.map((c) => (
+          {currentList.map((c) => (
             <option key={c} value={c}>
-              {c.charAt(0).toUpperCase() + c.slice(1)}
+              {formatAssetName(c, assets.stocks)}
             </option>
           ))}
         </select>
@@ -103,7 +137,7 @@ export default function App() {
       <main className="p-4 space-y-4 max-w-screen-2xl mx-auto">
 
         {/* ── KPI Cards ───────────────────────────────────────────────────── */}
-        <KPICards kpi={kpi} />
+        <KPICards kpi={filteredKpi} />
 
         {/* ── Tabbed Charts ───────────────────────────────────────────────── */}
         <div className="bg-card border border-border rounded-lg overflow-hidden">

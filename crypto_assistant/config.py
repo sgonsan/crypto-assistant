@@ -14,6 +14,18 @@ COINS = [
     "chainlink",     # LINK
 ]
 
+# Stocks to track (Yahoo Finance tickers)
+STOCKS = [
+    "AAPL",   # Apple
+    "MSFT",   # Microsoft
+    "GOOGL",  # Alphabet
+    "AMZN",   # Amazon
+    "NVDA",   # NVIDIA
+    "TSLA",   # Tesla
+    "META",   # Meta
+    "SPY",    # S&P 500 ETF
+]
+
 # Fetch interval in seconds
 INTERVAL = 60
 

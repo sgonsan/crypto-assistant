@@ -18,7 +18,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from crypto_assistant.config import COINS, DB_PATH
+from crypto_assistant.config import COINS, STOCKS, DB_PATH
 from crypto_assistant.db.database import (
     get_indicators_since,
     get_prices_since,
@@ -32,14 +32,19 @@ app = FastAPI(title="Crypto Assistant API")
 
 @app.get("/api/coins")
 def list_coins():
-    return COINS
+    return COINS + STOCKS
+
+
+@app.get("/api/assets")
+def list_assets():
+    return {"crypto": COINS, "stocks": STOCKS}
 
 
 @app.get("/api/kpi")
 def get_kpi():
     now = int(time.time())
     result = []
-    for coin_id in COINS:
+    for coin_id in COINS + STOCKS:
         prices = get_prices_since(DB_PATH, coin_id, since_ts=now - 86400)
         preds  = get_recent_predictions(DB_PATH, coin_id, n=1)
 

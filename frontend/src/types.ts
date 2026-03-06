@@ -37,3 +37,8 @@ export interface KPI {
   predicted_direction: string | null
   confidence: number
 }
+
+export interface Assets {
+  crypto: string[]
+  stocks: string[]
+}

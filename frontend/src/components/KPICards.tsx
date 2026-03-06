@@ -9,6 +9,9 @@ function directionColor(direction: string | null, confidence: number): string {
   return '#d29922'
 }
 
+const formatAssetName = (id: string) =>
+  id === id.toUpperCase() ? id : id.charAt(0).toUpperCase() + id.slice(1)
+
 export function KPICards({ kpi }: { kpi: KPI[] }) {
   return (
     <div className="flex gap-3 flex-wrap">
@@ -24,7 +27,7 @@ export function KPICards({ kpi }: { kpi: KPI[] }) {
             style={{ borderTop: `3px solid ${accent}` }}
           >
             <h4 className="font-semibold mb-2" style={{ color: accent }}>
-              {k.coin_id.toUpperCase()}
+              {formatAssetName(k.coin_id)}
             </h4>
 
             <div className="text-2xl font-bold mb-1">

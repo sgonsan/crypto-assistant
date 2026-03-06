@@ -120,7 +120,7 @@ def insert_price(
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """
-            INSERT INTO prices (coin_id, timestamp, open, high, low, close, volume)
+            INSERT OR IGNORE INTO prices (coin_id, timestamp, open, high, low, close, volume)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (coin_id, timestamp, open, high, low, close, volume),
@@ -143,7 +143,7 @@ def insert_indicators(
     with sqlite3.connect(db_path) as conn:
         conn.execute(
             """
-            INSERT INTO indicators
+            INSERT OR IGNORE INTO indicators
                 (coin_id, timestamp, rsi, macd, macd_signal, bb_upper, bb_lower, ema_20)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
