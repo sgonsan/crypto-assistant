@@ -1,7 +1,18 @@
 import os
 
 # Coins to track (CoinGecko IDs)
-COINS = ["bitcoin", "ethereum", "solana"]
+COINS = [
+    "bitcoin",       # BTC
+    "ethereum",      # ETH
+    "ripple",        # XRP
+    "binancecoin",   # BNB
+    "solana",        # SOL
+    "cardano",       # ADA
+    "dogecoin",      # DOGE
+    "tron",          # TRX
+    "avalanche-2",   # AVAX
+    "chainlink",     # LINK
+]
 
 # Fetch interval in seconds
 INTERVAL = 60

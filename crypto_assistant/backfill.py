@@ -129,6 +129,8 @@ def run_backfill(db_path: str = DB_PATH) -> None:
                 logger.info(
                     "Historical data already present for '%s' – skipping.", coin_id
                 )
+                if idx < len(COINS) - 1:
+                    time.sleep(_BETWEEN_COINS_SLEEP)
                 continue
 
             logger.info("Backfilling '%s'…", coin_id)

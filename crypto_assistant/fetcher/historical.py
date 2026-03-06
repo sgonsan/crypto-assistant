@@ -34,19 +34,20 @@ def fetch_market_chart(
     url = f"{BASE_URL}/coins/{coin_id}/market_chart"
     params = {"vs_currency": "usd", "days": days}
 
+    _MAX_ATTEMPTS = 4
     response = None
-    for attempt in range(2):
+    for attempt in range(_MAX_ATTEMPTS):
         try:
             response = session.get(url, params=params, timeout=30)
             response.raise_for_status()
             break
         except requests.exceptions.HTTPError as exc:
             if response is not None and response.status_code == 429:
-                wait = _RATE_LIMIT_SLEEP * (attempt + 1)
+                wait = _RATE_LIMIT_SLEEP * (2 ** attempt)  # 30, 60, 120, 240s
                 logger.warning(
                     "Rate limited fetching history for '%s' (%d days). "
-                    "Waiting %ds (attempt %d/2).",
-                    coin_id, days, wait, attempt + 1,
+                    "Waiting %ds (attempt %d/%d).",
+                    coin_id, days, wait, attempt + 1, _MAX_ATTEMPTS,
                 )
                 time.sleep(wait)
             else:
@@ -63,8 +64,8 @@ def fetch_market_chart(
             return None
     else:
         logger.error(
-            "Skipping '%s' historical (%d days) after 2 rate-limit retries.",
-            coin_id, days,
+            "Skipping '%s' historical (%d days) after %d rate-limit retries.",
+            coin_id, days, _MAX_ATTEMPTS,
         )
         return None
 
